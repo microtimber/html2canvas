@@ -1,5 +1,5 @@
 /*
-  html2canvas 0.5.0-beta2 <http://html2canvas.hertzen.com>
+  html2canvas 0.5.0-beta3 <http://html2canvas.hertzen.com>
   Copyright (c) 2015 Niklas von Hertzen
 
   Released under  License
@@ -7,7 +7,7 @@
 
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.html2canvas = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 (function (global){
-/*! https://mths.be/punycode v1.3.2 by @mathias */
+/*! https://mths.be/punycode v1.4.0 by @mathias */
 ;(function(root) {
 
 	/** Detect free variables */
@@ -73,7 +73,7 @@
 	 * @returns {Error} Throws a `RangeError` with the applicable error message.
 	 */
 	function error(type) {
-		throw RangeError(errors[type]);
+		throw new RangeError(errors[type]);
 	}
 
 	/**
@@ -220,7 +220,7 @@
 
 	/**
 	 * Bias adaptation function as per section 3.4 of RFC 3492.
-	 * http://tools.ietf.org/html/rfc3492#section-3.4
+	 * https://tools.ietf.org/html/rfc3492#section-3.4
 	 * @private
 	 */
 	function adapt(delta, numPoints, firstTime) {
@@ -525,14 +525,17 @@
 			return punycode;
 		});
 	} else if (freeExports && freeModule) {
-		if (module.exports == freeExports) { // in Node.js or RingoJS v0.8.0+
+		if (module.exports == freeExports) {
+			// in Node.js, io.js, or RingoJS v0.8.0+
 			freeModule.exports = punycode;
-		} else { // in Narwhal or RingoJS v0.7.0-
+		} else {
+			// in Narwhal or RingoJS v0.7.0-
 			for (key in punycode) {
 				punycode.hasOwnProperty(key) && (freeExports[key] = punycode[key]);
 			}
 		}
-	} else { // in Rhino or a web browser
+	} else {
+		// in Rhino or a web browser
 		root.punycode = punycode;
 	}
 
@@ -1018,11 +1021,11 @@ function renderWindow(node, container, options, windowWidth, windowHeight) {
         var canvas;
 
         if (options.type === "view") {
-            canvas = crop(renderer.canvas, {width: renderer.canvas.width, height: renderer.canvas.height, top: 0, left: 0, x: 0, y: 0});
+            canvas = crop(renderer.canvas, {width: renderer.canvas.width, height: renderer.canvas.height, top: 0, left: 0, x: 0, y: 0}, options);
         } else if (node === clonedWindow.document.body || node === clonedWindow.document.documentElement || options.canvas != null) {
             canvas = renderer.canvas;
         } else {
-            canvas = crop(renderer.canvas, {width:  options.width != null ? options.width : bounds.width, height: options.height != null ? options.height : bounds.height, top: bounds.top, left: bounds.left, x: clonedWindow.pageXOffset, y: clonedWindow.pageYOffset});
+            canvas = crop(renderer.canvas, {width:  options.width != null ? options.width : bounds.width, height: options.height != null ? options.height : bounds.height, top: bounds.top, left: bounds.left, x: clonedWindow.pageXOffset, y: clonedWindow.pageYOffset}, options);
         }
 
         cleanupContainer(container, options);
@@ -1038,13 +1041,23 @@ function cleanupContainer(container, options) {
 }
 
 function crop(canvas, bounds) {
+    var scaleX = 1,
+        scaleY = 1;
+    if (options.scale) {
+        if (!isNaN(options.scale)) {
+            scaleX = scaleY = options.scale;
+        } else {
+            scaleX = options.scale.x;
+            scaleY = options.scale.y;
+        }
+    }
     var croppedCanvas = document.createElement("canvas");
-    var x1 = Math.min(canvas.width - 1, Math.max(0, bounds.left));
-    var x2 = Math.min(canvas.width, Math.max(1, bounds.left + bounds.width));
-    var y1 = Math.min(canvas.height - 1, Math.max(0, bounds.top));
-    var y2 = Math.min(canvas.height, Math.max(1, bounds.top + bounds.height));
-    croppedCanvas.width = bounds.width;
-    croppedCanvas.height =  bounds.height;
+    var x1 = Math.min(canvas.width - 1, Math.max(0, bounds.left)) * scaleX;
+    var x2 = Math.min(canvas.width, Math.max(1, bounds.left + bounds.width)) * scaleX;
+    var y1 = Math.min(canvas.height - 1, Math.max(0, bounds.top)) * scaleY;
+    var y2 = Math.min(canvas.height, Math.max(1, bounds.top + bounds.height)) * scaleY;
+    croppedCanvas.width = bounds.width * scaleX;
+    croppedCanvas.height =  bounds.height * scaleY;
     log("Cropping canvas at:", "left:", bounds.left, "top:", bounds.top, "width:", (x2-x1), "height:", (y2-y1));
     log("Resulting crop with width", bounds.width, "and height", bounds.height, " with x", x1, "and y", y1);
     croppedCanvas.getContext("2d").drawImage(canvas, x1, y1, x2-x1, y2-y1, bounds.x, bounds.y, x2-x1, y2-y1);
@@ -2961,12 +2974,24 @@ var log = require('../log');
 
 function CanvasRenderer(width, height) {
     Renderer.apply(this, arguments);
+    var scaleX = 1,
+        scaleY = 1;
+    if (this.options.scale) {
+        if (!isNaN(this.options.scale)) {
+            scaleX = scaleY = this.options.scale;
+        } else {
+            scaleX = this.options.scale.x;
+            scaleY = this.options.scale.y;
+        }
+    }
     this.canvas = this.options.canvas || this.document.createElement("canvas");
     if (!this.options.canvas) {
-        this.canvas.width = width;
-        this.canvas.height = height;
+        this.canvas.width = width * scaleX;
+        this.canvas.height = height * scaleY;
     }
     this.ctx = this.canvas.getContext("2d");
+    this.ctx.scale(scaleX, scaleY);
+    
     this.taintCtx = this.document.createElement("canvas").getContext("2d");
     this.ctx.textBaseline = "bottom";
     this.variables = {};
