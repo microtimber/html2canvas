@@ -4,12 +4,24 @@ var log = require('../log');
 
 function CanvasRenderer(width, height) {
     Renderer.apply(this, arguments);
+    var scaleX = 1,
+        scaleY = 1;
+    if (this.options.scale) {
+        if (!isNaN(this.options.scale)) {
+            scaleX = scaleY = this.options.scale;
+        } else {
+            scaleX = this.options.scale.x;
+            scaleY = this.options.scale.y;
+        }
+    }
     this.canvas = this.options.canvas || this.document.createElement("canvas");
     if (!this.options.canvas) {
-        this.canvas.width = width;
-        this.canvas.height = height;
+        this.canvas.width = width * scaleX;
+        this.canvas.height = height * scaleY;
     }
     this.ctx = this.canvas.getContext("2d");
+    this.ctx.scale(scaleX, scaleY);
+    
     this.taintCtx = this.document.createElement("canvas").getContext("2d");
     this.ctx.textBaseline = "bottom";
     this.variables = {};
